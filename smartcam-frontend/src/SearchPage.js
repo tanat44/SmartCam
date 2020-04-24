@@ -1,21 +1,29 @@
 import React, { useState, useEffect,} from 'react';
-import { Segment, Header, Table, Label, Popup, } from 'semantic-ui-react'
+import { Segment, Header, Table, Label, Popup, Grid } from 'semantic-ui-react'
 import { rawData } from './RawData';
 import { DateInput } from 'semantic-ui-calendar-react';
 import * as moment from 'moment';
+import './SearchPage.css';
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+} from 'recharts';
 
 const SearchPage = () => {
 
   const COLOR_MAP = ["#E8E8F0", "#b3cde0", "#6497b1", "#005b96", "#03396c"]; //, "#011f4b"];
 
-  const [startDate, setStartDate] = useState(moment('DD-MM-YYYY'));
+  const [startDate, setStartDate] = useState(moment().format('DD-MM-YYYY'));
   const [endDate, setEndDate] = useState(moment().format('DD-MM-YYYY'));
   const [originalBucket, setOriginalBucket] = useState([]);
   const [filteredBucket, setFilteredBucket] = useState([]);
+  const [graphBucket, setGraphBucket] = useState([])
   const [maxDetection, setMaxDetection] = useState(COLOR_MAP.length);
   const [cameraNum, setCameraNum] = useState(0);
   const [dayNum, setDayNum] = useState(0);
   const [hourNum, setHourNum] = useState(0);
+  const [keyword, setKeyword] = useState('');
+  const [showGraph, setShowGraph] = useState(false);
+  const [currentCamera, setCurrentCamera] = useState(0);
 
   useEffect (() => {
     fetchData();
@@ -55,13 +63,35 @@ const SearchPage = () => {
     setFilteredBucket(myBucket);
   }
 
+  function calculateGraphBucket(day, cameraIndex) {
+    let b = [];
+    let maxCount = -1;
+    for (let i=0; i < hourNum; i++) {
+      let data = {};
+      data.name = `${2*i}-${2*i+2}`;
+      for (let c=0; c < cameraNum; c++) {
+        const count = filteredBucket[c][i][day].count;
+        data[`Camera${c}`] = count;
+        if (count > maxCount){
+          maxCount = count;
+        }
+      }
+      b.push(data);
+    }
+    setGraphBucket(b);
+    setCurrentCamera(cameraIndex);
+    setShowGraph(true);
+  }
+
   function handleSearch(e) {
     const value = e.target.value;
     if (value.length === 0) {
       setFilteredBucket(originalBucket);
     } else if (value.length > 2) {
       filterBucket(value);
-    }
+    } 
+    setShowGraph(false);
+    setKeyword(value);
     
   }
 
@@ -99,27 +129,37 @@ const SearchPage = () => {
 
   }
 
-  const cameraTable = (data) => {
+  const cameraTable = (data, cameraIndex) => {
 
     let p = "1px";
 
     const cameraRow = (data) => {
       const row = data.map((d, i) => {
         let color = COLOR_MAP[Math.ceil(Math.log2(d.count + 1) / Math.log2(maxDetection + 1) * (COLOR_MAP.length - 1))];
-        let content = "0";
+        const header = d.count === 0 ? 'No detection' : `${d.count} Detections`
+        let label = '';
         if(d.count > 0)
-          content = d.count.toString() + " : [" + Array.from(d.labels).join(', ') + "]";
+          label = Array.from(d.labels).sort().join(', ');
         return (
-            <Popup
-              key={i}
-              content={content}
-              trigger={
+            <Popup trigger={
                 <Table.Cell style={{padding:p, border:"0px"}}>
-                  <div style={{width:"20px", height:"20px", backgroundColor:color}}/>
+                  <div style={{width:"20px", height:"20px", backgroundColor:color}} onClick={() => calculateGraphBucket(i, cameraIndex)}/>
                 </Table.Cell>
-              }
-              position='top center'
-            />
+                } flowing hoverable
+                style={{maxWidth: '300px'}}>
+              <Grid centered divided rows={3}>
+                <Grid.Row textAlign='center'>
+                  <Header as='h4' style={{margin: 'auto 2rem'}}>{header}</Header>
+                </Grid.Row>
+                {d.count > 0 && 
+                  <Grid.Row textAlign='left'>
+                    <p>
+                      <b>Labels: </b> {label}
+                    </p>
+                  </Grid.Row>
+                }
+              </Grid>
+            </Popup>
         );
       });
       return row;
@@ -127,20 +167,25 @@ const SearchPage = () => {
   
     const manyRows = data.map((d, i) => {
       return (<Table.Row key={i}>
-        <Table.Cell style={{padding:p, border:"0px"}}>
+        <Table.Cell style={{ padding: p, border:"0px", whiteSpace: 'nowrap'}}>
           {2*i}-{2*i+2}
         </Table.Cell>
         {cameraRow(d)}
       </Table.Row>);
     });
 
-    const headers = Array.apply(null, Array(dayNum + 1)).map(() => {
-      return (<Table.HeaderCell style={{padding:p, border:"0px"}}>a</Table.HeaderCell>);
+    const headers = Array.apply(null, Array(dayNum)).map((v , i) => {
+      return <Table.HeaderCell style={{padding:p, border:"0px"}}>
+        {moment(startDate, 'DD-MM-YYYY').add(i, 'days').format('D/M')}
+        </Table.HeaderCell>;
     });
 
     return (
         <Table collapsing basic size='small' style={{padding:0, border:"0px"}}>
           <Table.Body>
+            <Table.HeaderCell style={{padding:p, border:"0px"}}>
+              Date
+            </Table.HeaderCell>
             {headers}
             {manyRows}
           </Table.Body>
@@ -150,22 +195,22 @@ const SearchPage = () => {
 
   function handleDatePicker (e, {name, value}) {
     if (name === 'endDate') {
-      setEndDate(value);
+      setEndDate(moment(value).format('DD-MM-YYYY'));
       if (moment(value) < moment(startDate)) {
-        setStartDate(value);
+        setStartDate(moment(value).format('DD-MM-YYYY'));
       }
     } else if (name === 'startDate') {
-      setStartDate(value);
+      setStartDate(moment(value).format('DD-MM-YYYY'));
       if (moment(value) > moment(endDate)) {
-        setEndDate(value);
+        setEndDate(moment(value).format('DD-MM-YYYY'));
       }
     }
   }
 
   return (
-    <div>
+    <div className="screen">
       <Header as='h1' content ='Search Playback' textAlign='left' />
-      <div>
+      <div style={{margin: '2rem 0'}}>
         From 
         <div style={{display: "inline-block", margin: "0 10px"}}>
           <DateInput
@@ -187,24 +232,51 @@ const SearchPage = () => {
           />
         </div>
         Search
-        <div className="ui input" style={{display: "inline-block", margin: "0 10px"}}> <input type="text" placeholder="Keyword..." onChange={handleSearch}/></div>
+        <div className="ui input" style={{display: "inline-block", margin: "0 10px"}}> <input type="text" placeholder="Keyword..." value={keyword} onChange={handleSearch}/></div>
       </div>
-
-      <div style={{ overflowY: 'auto', maxHeight: '100%' }}>
-        {
-          filteredBucket.map((b, i) => {
-            return (
-              <Segment key={i}>
-                <Label color='blue' size='big'>Camera {i}</Label>
-                {cameraTable(b)}
-              </Segment>
-            );
-          })
-        }
-      </div>
-
-        <Segment>Content</Segment>
-      
+      <div style={{display: 'flex', flexFlow: 'row', flex: '1 1 auto', overflow: 'auto'}}> 
+        <div style={{display: 'flex', flex: '0 1 auto', overflow: 'auto', flexDirection: 'column', maxWidth: showGraph ? '70%' : '100%'}} >
+          {
+            filteredBucket.map((b, i) => {
+              return (
+                <div style={{display: 'flex'}}>
+                  <Segment key={i}>
+                    <Label color='blue' size='big'>Camera {i+1}</Label>
+                    {cameraTable(b, i)}
+                  </Segment>
+                </div>
+              );
+            })
+          }
+        </div>
+        { showGraph && 
+          <div style={{display: 'flex', flex: '1 1 auto' }}>
+            <LineChart
+              width={500}
+              height={300}
+              data={graphBucket}
+              margin={{
+                top: 5, right: 30, left: 20, bottom: 5,
+              }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" interval={0}/>
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              {
+                filteredBucket.map((c, index) => {
+                  const label = `Camera${index + 1}`;
+                  return index === currentCamera ? 
+                    <Line type="monotone" dataKey={label} stroke="#82ca9d" strokeWidth={3} activeDot={{ r: 8 }} /> : 
+                    <Line type="monotone" dataKey={label} stroke="#bbb" />
+                })
+              }
+              
+              
+            </LineChart>
+        </div>}
+      </div>     
     </div>
   );
 
