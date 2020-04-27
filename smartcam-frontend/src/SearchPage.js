@@ -147,7 +147,7 @@ const SearchPage = () => {
                 <Table.Cell style={{padding:p, border:"0px"}}>
                   <div style={{width:"20px", height:"20px", backgroundColor:color}} onClick={() => calculateGraphBucket(i, cameraIndex)}/>
                 </Table.Cell>
-                } flowing hoverable
+                } flowing hoverable position={ i < dayNum/2 ? 'top left' : 'top right' }
                 style={{maxWidth: '300px'}}>
               <Grid divided rows={2}>
                 <Grid.Row textAlign='left'>
@@ -183,15 +183,17 @@ const SearchPage = () => {
       const hourStart = 2*i;
       const hourEnd = 2*i+2;
       return (<Table.Row key={i}>
-        <Table.Cell style={{ padding: p, border:"0px", whiteSpace: 'nowrap'}}>
-          {hourStart}-{hourEnd}
+        <Table.Cell style={{ padding: p, border:"0px", whiteSpace: 'nowrap', fontWeight: 'bold', padding: '0 0.5rem', borderTop: i === 6 ? '1px solid gray' : '0px', textAlign: 'center' }}>
+          {/* {hourStart}-{hourEnd} */}
+          { i === 0 ? 'AM' : ''}
+          { i === 6 ? 'PM' : ''}
         </Table.Cell>
         {cameraRow(d, hourStart, hourEnd)}
       </Table.Row>);
     });
 
     const headers = Array.apply(null, Array(dayNum)).map((v , i) => {
-      return <Table.HeaderCell style={{ padding:p, border:"0px", fontSize: '8px' }}>   
+      return <Table.HeaderCell style={{ padding:p, border:"0px", whiteSpace: 'nowrap', textOverflow: 'ellipsis', maxWidth: '20px'}}>   
         { i%7 == 0 ? moment(startDate, 'DD-MM-YYYY').add(i, 'days').format('D/M') : ''}
         </Table.HeaderCell>;
     });
@@ -200,7 +202,6 @@ const SearchPage = () => {
         <Table collapsing basic size='small' style={{padding:0, border:"0px"}}>
           <Table.Body>
             <Table.HeaderCell style={{padding:p, border:"0px"}}>
-              Date
             </Table.HeaderCell>
             {headers}
             {manyRows}
@@ -268,7 +269,7 @@ const SearchPage = () => {
         { showGraph && 
           <div style={{display: 'flex', flex: '1 1 auto', flexDirection: 'column'}}>
             <div style={{display: 'flex', marginLeft: '2rem', fontWeight: 'bold'}}>
-              Camera {currentCamera}
+              Detections from Camera {currentCamera}
             </div>
             <div style={{display: 'flex', margin: '0 0 1rem 2rem'}}>
               Date {moment(startDate, 'DD-MM-YYYY').add(currentDay, 'days').format('D/M/YYYY')}
