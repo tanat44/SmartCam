@@ -24,6 +24,7 @@ const SearchPage = () => {
   const [keyword, setKeyword] = useState('');
   const [showGraph, setShowGraph] = useState(false);
   const [currentCamera, setCurrentCamera] = useState(0);
+  const [currentDay, setCurrentDay] = useState(0);
 
   useEffect (() => {
     fetchData();
@@ -81,6 +82,7 @@ const SearchPage = () => {
     setGraphBucket(b);
     setCurrentCamera(cameraIndex);
     setShowGraph(true);
+    setCurrentDay(day);
   }
 
   function handleSearch(e) {
@@ -133,7 +135,7 @@ const SearchPage = () => {
 
     let p = "1px";
 
-    const cameraRow = (data) => {
+    const cameraRow = (data, hourStart, hourEnd) => {
       const row = data.map((d, i) => {
         let color = COLOR_MAP[Math.ceil(Math.log2(d.count + 1) / Math.log2(maxDetection + 1) * (COLOR_MAP.length - 1))];
         const header = d.count === 0 ? 'No detection' : `${d.count} Detections`
@@ -147,16 +149,28 @@ const SearchPage = () => {
                 </Table.Cell>
                 } flowing hoverable
                 style={{maxWidth: '300px'}}>
-              <Grid centered divided rows={3}>
-                <Grid.Row textAlign='center'>
-                  <Header as='h4' style={{margin: 'auto 2rem'}}>{header}</Header>
+              <Grid divided rows={2}>
+                <Grid.Row textAlign='left'>
+                  <Header as='h4' style={{margin: 'auto 1rem'}}>{header}</Header>
                 </Grid.Row>
                 {d.count > 0 && 
-                  <Grid.Row textAlign='left'>
-                    <p>
-                      <b>Labels: </b> {label}
-                    </p>
-                  </Grid.Row>
+                  <div style={{marginBottom: '1rem'}}>
+                    <Grid.Row textAlign='left'>
+                      <p>
+                        <b>Date </b> {moment(startDate, 'DD-MM-YYYY').add(i, 'days').format('D/M/YYYY')}
+                      </p>
+                    </Grid.Row>
+                    <Grid.Row textAlign='left'>
+                      <p>
+                        <b>Time </b> {hourStart}-{hourEnd}
+                      </p>
+                    </Grid.Row>
+                    <Grid.Row textAlign='left'>
+                      <p>
+                        <b>Labels </b> {label}
+                      </p>
+                    </Grid.Row>
+                  </div>
                 }
               </Grid>
             </Popup>
@@ -166,17 +180,19 @@ const SearchPage = () => {
     };
   
     const manyRows = data.map((d, i) => {
+      const hourStart = 2*i;
+      const hourEnd = 2*i+2;
       return (<Table.Row key={i}>
         <Table.Cell style={{ padding: p, border:"0px", whiteSpace: 'nowrap'}}>
-          {2*i}-{2*i+2}
+          {hourStart}-{hourEnd}
         </Table.Cell>
-        {cameraRow(d)}
+        {cameraRow(d, hourStart, hourEnd)}
       </Table.Row>);
     });
 
     const headers = Array.apply(null, Array(dayNum)).map((v , i) => {
-      return <Table.HeaderCell style={{padding:p, border:"0px"}}>
-        {moment(startDate, 'DD-MM-YYYY').add(i, 'days').format('D/M')}
+      return <Table.HeaderCell style={{ padding:p, border:"0px", fontSize: '8px' }}>   
+        { i%7 == 0 ? moment(startDate, 'DD-MM-YYYY').add(i, 'days').format('D/M') : ''}
         </Table.HeaderCell>;
     });
 
@@ -250,7 +266,13 @@ const SearchPage = () => {
           }
         </div>
         { showGraph && 
-          <div style={{display: 'flex', flex: '1 1 auto' }}>
+          <div style={{display: 'flex', flex: '1 1 auto', flexDirection: 'column'}}>
+            <div style={{display: 'flex', marginLeft: '2rem', fontWeight: 'bold'}}>
+              Camera {currentCamera}
+            </div>
+            <div style={{display: 'flex', margin: '0 0 1rem 2rem'}}>
+              Date {moment(startDate, 'DD-MM-YYYY').add(currentDay, 'days').format('D/M/YYYY')}
+            </div>
             <LineChart
               width={500}
               height={300}
@@ -258,6 +280,7 @@ const SearchPage = () => {
               margin={{
                 top: 5, right: 30, left: 20, bottom: 5,
               }}
+              style={{display: 'flex'}}
             >
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" interval={0}/>
@@ -268,12 +291,10 @@ const SearchPage = () => {
                 filteredBucket.map((c, index) => {
                   const label = `Camera${index + 1}`;
                   return index === currentCamera ? 
-                    <Line type="monotone" dataKey={label} stroke="#82ca9d" strokeWidth={3} activeDot={{ r: 8 }} /> : 
+                    <Line type="monotone" dataKey={label} stroke="#0e659d" strokeWidth={3} activeDot={{ r: 8 }} /> : 
                     <Line type="monotone" dataKey={label} stroke="#bbb" />
                 })
               }
-              
-              
             </LineChart>
         </div>}
       </div>     
